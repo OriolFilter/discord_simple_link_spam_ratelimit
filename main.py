@@ -219,7 +219,7 @@ class MyBot(discord.Client):
             author_messages_db.set_cache_timeout()
             await message.channel.send(f"# Preemtive timeout {message.author.mention}\n"
                                        f"## Timout hours: {self.config.timeout_hours}\n"
-                                       f"If you believe this is was an, please contact the "
+                                       f"If you believe this is was a mistake, please contact the "
                                        f"moderators/admins.\n")
             try:
                 await message.author.timeout(datetime.timedelta(hours=self.config.timeout_hours),
