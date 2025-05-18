@@ -30,10 +30,13 @@ class MessageRecord:
 class MessagesDBServerAuthor:
     messages: [MessageRecord]
     id: int
+    timed_out: bool
+    timed_out_timestamp: datetime.datetime | None
 
     def __init__(self, id: int):
         self.messages = []
         self.id = int(id)
+        self.timed_out = False
 
     def add_message(self, message_object: MessageRecord):
         self.messages.append(message_object)
@@ -66,6 +69,13 @@ class MessagesDBServerAuthor:
         url_list.sort()
 
         return list(dict.fromkeys(url_list))
+
+    def set_cache_timeout(self):
+        self.timed_out = True
+        self.timed_out_timestamp = datetime.datetime.now()
+    def clear_cache_timout(self):
+        self.timed_out = False
+        self.timed_out_timestamp = None
 
 
 class MessagesDBServer:
@@ -123,7 +133,8 @@ class Config:
 
 
 class MyBot(discord.Client):
-    lock = asyncio.Lock
+    messages_cleanup_lock = asyncio.Lock
+    timeout_cleanup_lock = asyncio.Lock
 
     def __init__(self, intents: discord.Intents = None):
         intents.message_content = True
@@ -141,7 +152,8 @@ class MyBot(discord.Client):
             server_id=os.getenv("DISCORD_SERVER_ID", "")
         )
 
-        self.lock = asyncio.Lock()
+        self.messages_cleanup_lock = asyncio.Lock()
+        self.timeout_cleanup_lock = asyncio.Lock()
 
     # @discord.ext. event
     async def on_ready(self):
@@ -176,14 +188,15 @@ class MyBot(discord.Client):
                 await self.review_user(message)
 
     async def review_user(self, message: discord.Message):
-        message_author: MessagesDBServerAuthor = self.config.messages_db.servers.get(message.guild.id).authors.get(message.author.id)
+        author_messages_db: MessagesDBServerAuthor = self.config.messages_db.servers.get(message.guild.id).authors.get(
+            message.author.id)
         global global_count_threshold
 
         triggered_timeout: bool = False
         triggered_timeout_url: str | None = None
 
         # sanitized_urls = []
-        sanitized_urls = message_author.get_uniq_urls()
+        sanitized_urls = author_messages_db.get_uniq_urls()
         # print(sanitized_urls)
 
         i = 0
@@ -202,64 +215,67 @@ class MyBot(discord.Client):
             i += 1
         del url, count
 
-        if triggered_timeout:
+        if triggered_timeout and not author_messages_db.timed_out:
             # print(f"user {message.author.name} triggered timeout with the url {triggered_timeout_url}")
 
             # 0. Check if user is timed out (to avoid further triggers)
-            if not message.author.is_timed_out():
+            # if not message.author.is_timed_out():
                 # 1. Timeout the user
-                failed_to_timeout = False
-                await message.channel.send(f"# Preemtive timeout {message.author.mention}\n"
-                                           f"## Timout hours: {self.config.timeout_hours}\n"
-                                           f"If you believe this is was an, please contact the "
-                                           f"moderators/admins.\n")
-                try:
-                    await message.author.timeout(datetime.timedelta(hours=self.config.timeout_hours),
-                                                 reason=f"Triggered rate limit ({global_count_threshold} instances) with URL {triggered_timeout_url}")
-                except discord.errors.Forbidden:
-                    failed_to_timeout = True
-                    await message.channel.send("Missing permissions when timing out user")
+            failed_to_timeout = False
+            author_messages_db.set_cache_timeout()
+            await message.channel.send(f"# Preemtive timeout {message.author.mention}\n"
+                                       f"## Timout hours: {self.config.timeout_hours}\n"
+                                       f"If you believe this is was an, please contact the "
+                                       f"moderators/admins.\n")
+            try:
+                await message.author.timeout(datetime.timedelta(hours=self.config.timeout_hours),
+                                             reason=f"Triggered rate limit ({global_count_threshold} instances) with URL {triggered_timeout_url}")
+            except discord.errors.Forbidden:
+                failed_to_timeout = True
+                await message.channel.send("Missing permissions when timing out user")
 
-                # 3 Mention in the moderation_channel
-                # moderation_channel: discord.TextChannel | None = None
-                # for server in client.guilds:
-                #     server: discord.Guild
-                #     if int(server.id) == int(message.guild.id):
-                #         for channel in server.channels:
-                #             if channel.name == self.config.moderation_channel_name:
-                #                 moderation_channel = channel
-                # del server
-                # print(moderation_channel)
+            # 3 Mention in the moderation_channel
+            # moderation_channel: discord.TextChannel | None = None
+            # for server in client.guilds:
+            #     server: discord.Guild
+            #     if int(server.id) == int(message.guild.id):
+            #         for channel in server.channels:
+            #             if channel.name == self.config.moderation_channel_name:
+            #                 moderation_channel = channel
+            # del server
+            # print(moderation_channel)
 
-                moderation_channel = None
-                if self.config.moderation_channel_id:
-                    moderation_channel = self.get_channel(int(self.config.moderation_channel_id))
-                else:
-                    moderation_channel=message.channel
-                mod_pings = ""
-                if len(self.config.roles_to_ping) < 1:
-                    server_owner = self.client.get_user(int(message.guild.owner_id))
-                    mod_pings = f"\n++ {server_owner}"
+            moderation_channel = None
+            if self.config.moderation_channel_id:
+                moderation_channel = self.get_channel(int(self.config.moderation_channel_id))
+            else:
+                moderation_channel = message.channel
+            mod_pings = ""
+            if len(self.config.roles_to_ping) < 1:
+                server_owner = self.client.get_user(int(message.guild.owner_id))
+                mod_pings = f"\n++ {server_owner}"
 
-                else:
-                    mod_pings = "\n++ ".join([f"<@&{role_id}>" for role_id in self.config.roles_to_ping])
+            else:
+                mod_pings = "\n++ ".join([f"<@&{role_id}>" for role_id in self.config.roles_to_ping])
 
-                # Messages currently stored from the user
-                possible_recent_messages_from_user: list[MessageRecord] = self.get_recent_messages_from_user(
-                    message.author.id)
-                formated_list_possible_recent_messages_from_user = ""
-                for possible_message in possible_recent_messages_from_user:
-                    possible_message: MessageRecord
-                    formated_list_possible_recent_messages_from_user += f"- {possible_message.message_url}\n"
-                del possible_message
+            # Messages currently stored from the user
+            possible_recent_messages_from_user: list[MessageRecord] = self.get_recent_messages_from_user(
+                message.author.id)
+            formated_list_possible_recent_messages_from_user = ""
+            for possible_message in possible_recent_messages_from_user:
+                possible_message: MessageRecord
+                formated_list_possible_recent_messages_from_user += f"- {possible_message.message_url}\n"
+            del possible_message
 
-                if failed_to_timeout:
-                    # moderation_channel.send()
-                    await moderation_channel.send(
-                        f"Wasn't able to timeout user {message.author.mention} due to an error of permissions.\nList of possible recent messages:\n{formated_list_possible_recent_messages_from_user}\n{mod_pings}")
-                else:
-                    await moderation_channel.send(f"User {message.author.mention} has been timeout for {self.config.timeout_hours} hours.\nList of possible recent messages:\n{formated_list_possible_recent_messages_from_user}\n{mod_pings}")
-                # 3. Remove recent messages  # Embed in the admins channel for admins to decide what to do with it?
+            if failed_to_timeout:
+                # moderation_channel.send()
+                await moderation_channel.send(
+                    f"Wasn't able to timeout user {message.author.mention} due to an error of permissions.\nList of possible recent messages:\n{formated_list_possible_recent_messages_from_user}\n{mod_pings}")
+            else:
+                await moderation_channel.send(
+                    f"User {message.author.mention} has been timeout for {self.config.timeout_hours} hours.\nList of possible recent messages:\n{formated_list_possible_recent_messages_from_user}\n{mod_pings}")
+            # 3. Remove recent messages  # Embed in the admins channel for admins to decide what to do with it?
+
     def get_recent_messages_from_user(self, user_id: int) -> list[MessageRecord]:
         for server in self.config.messages_db.servers.values():
             server: MessagesDBServer
@@ -270,7 +286,7 @@ class MyBot(discord.Client):
 
     @tasks.loop(seconds=5)
     async def messages_cleanup(self):
-        async with self.lock:
+        async with self.messages_cleanup_lock:
             print("Cleanup job start")
             global global_thresholds_seconds
             job_start_timestamp = datetime.datetime.now(datetime.UTC)
@@ -286,6 +302,18 @@ class MyBot(discord.Client):
                             print(
                                 f"[CACHE CLEANUP] Deleting message {message.id} from user {message.author_id} (server {message.server_id})")
                             author.messages.remove(message)
+
+    @tasks.loop(seconds=15)
+    async def timeout_cleanup(self):
+        async with self.timeout_cleanup_lock:
+            print("Cleanup job start")
+            for server in self.config.messages_db.servers.values():
+                server: MessagesDBServer
+                for author in server.authors.values():
+                    author: MessagesDBServerAuthor
+                    timeout_bottom_threshold = datetime.datetime.now(datetime.UTC) - datetime.timedelta(seconds=global_thresholds_seconds + 15)
+                    if author.timed_out and author.timed_out_timestamp < timeout_bottom_threshold:
+                        author.clear_cache_timout()
 
 
 global_thresholds_seconds = 7
