@@ -311,8 +311,8 @@ class MyBot(discord.Client):
                         author.clear_cache_timout()
 
 
-global_thresholds_seconds = 7
-global_count_threshold = 5
+global_thresholds_seconds = 5
+global_count_threshold = 3
 
 if __name__ == '__main__':
     _intents = discord.Intents.default()
