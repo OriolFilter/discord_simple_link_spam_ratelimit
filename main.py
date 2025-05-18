@@ -126,7 +126,6 @@ class Config:
     messages_db: MessagesDB
     timeout_hours: int
     roles_to_ping: list[str]
-    moderation_channel_id: str
     server_id: str | None
     # thresholds_seconds: int
     # count_threshold: 5
@@ -140,15 +139,10 @@ class MyBot(discord.Client):
         intents.message_content = True
         super().__init__(intents=intents)
 
-        # discord_moderation_channel_id = None
-        # if os.getenv("DISCORD_MODERATION_CHANNEL_ID"):
-        #     discord_moderation_channel_id = int(os.getenv("DISCORD_MODERATION_CHANNEL_ID"))
-
         self.config = Config(
             messages_db=MessagesDB(),
             timeout_hours=5,
             roles_to_ping=os.getenv("DISCORD_ROLES_TO_PING_ID", "").split(),
-            moderation_channel_id=os.getenv("DISCORD_MODERATION_CHANNEL_ID", ""),
             server_id=os.getenv("DISCORD_SERVER_ID", "")
         )
 
@@ -246,10 +240,11 @@ class MyBot(discord.Client):
             # print(moderation_channel)
 
             moderation_channel = None
-            if self.config.moderation_channel_id:
-                moderation_channel = self.get_channel(int(self.config.moderation_channel_id))
+            if message.guild.public_updates_channel:
+                moderation_channel = message.guild.public_updates_channel
             else:
                 moderation_channel = message.channel
+
             mod_pings = ""
             if len(self.config.roles_to_ping) < 1:
                 server_owner = self.client.get_user(int(message.guild.owner_id))
