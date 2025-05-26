@@ -73,6 +73,7 @@ class MessagesDBServerAuthor:
     def set_cache_timeout(self):
         self.timed_out = True
         self.timed_out_timestamp = datetime.datetime.now()
+
     def clear_cache_timout(self):
         self.timed_out = False
         self.timed_out_timestamp = None
@@ -133,11 +134,14 @@ class Config:
 
 class MyBot(discord.Client):
     messages_cleanup_lock = asyncio.Lock
-    timeout_cleanup_lock = asyncio.Lock
+    lock_timeout_cleanup = asyncio.Lock
+    lock_healthcheck = asyncio.Lock
+    __connected: bool = False
 
     def __init__(self, intents: discord.Intents = None):
         intents.message_content = True
         super().__init__(intents=intents)
+        self._set_as_disconnected()
 
         self.config = Config(
             messages_db=MessagesDB(),
@@ -147,12 +151,14 @@ class MyBot(discord.Client):
         )
 
         self.messages_cleanup_lock = asyncio.Lock()
-        self.timeout_cleanup_lock = asyncio.Lock()
+        self.lock_timeout_cleanup = asyncio.Lock()
+        self.lock_healthcheck = asyncio.Lock()
 
     # @discord.ext. event
     async def on_ready(self):
         print(f'We have logged in as {client.user}')
         self.messages_cleanup.start()
+        self.task_check_health.start()
 
     async def on_message(self, message: discord.Message):
         if message.guild.id != self.config.server_id:
@@ -214,7 +220,7 @@ class MyBot(discord.Client):
 
             # 0. Check if user is timed out (to avoid further triggers)
             # if not message.author.is_timed_out():
-                # 1. Timeout the user
+            # 1. Timeout the user
             failed_to_timeout = False
             author_messages_db.set_cache_timeout()
             await message.channel.send(f"# Preemtive timeout {message.author.mention}\n"
@@ -299,16 +305,48 @@ class MyBot(discord.Client):
                             author.messages.remove(message)
 
     @tasks.loop(seconds=15)
-    async def timeout_cleanup(self):
-        async with self.timeout_cleanup_lock:
+    async def task_timeout_cleanup(self):
+        async with self.lock_timeout_cleanup:
             print("Cleanup job start")
             for server in self.config.messages_db.servers.values():
                 server: MessagesDBServer
                 for author in server.authors.values():
                     author: MessagesDBServerAuthor
-                    timeout_bottom_threshold = datetime.datetime.now(datetime.UTC) - datetime.timedelta(seconds=global_thresholds_seconds + 15)
+                    timeout_bottom_threshold = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
+                        seconds=global_thresholds_seconds + 15)
                     if author.timed_out and author.timed_out_timestamp < timeout_bottom_threshold:
                         author.clear_cache_timout()
+
+    @property
+    def is_connected(self) -> bool:
+        return self.__connected
+
+    def _set_as_connected(self):
+        self.__connected = True
+
+    def _set_as_disconnected(self):
+        self.__connected = False
+
+    async def on_resumed(self):
+        self._set_as_connected()
+        print("Reconnected!")
+
+    async def on_connect(self):
+        self._set_as_connected()
+        print("Connected!")
+
+    async def on_disconnect(self):
+        self._set_as_disconnected()
+        print("Disconnected!")
+
+    @tasks.loop(seconds=5)
+    async def task_check_health(self):
+        file = '/tmp/healthz'
+        print(f"Is connected? {self.is_connected}")
+        with open(file, "w") as f:
+            f.write(("NOK", "OK")[self.is_connected])
+        if not self.is_connected:
+            await self.connect()
 
 
 global_thresholds_seconds = 5
