@@ -154,7 +154,28 @@ class MyBot(discord.Client):
         self.lock_timeout_cleanup = asyncio.Lock()
         self.lock_healthcheck = asyncio.Lock()
 
-    # @discord.ext. event
+    @property
+    def is_connected(self) -> bool:
+        return self.__connected
+
+    def _set_as_connected(self):
+        self.__connected = True
+
+    def _set_as_disconnected(self):
+        self.__connected = False
+
+    async def on_resumed(self):
+        self._set_as_connected()
+        print("Reconnected!")
+
+    async def on_connect(self):
+        self._set_as_connected()
+        print("Connected!")
+
+    async def on_disconnect(self):
+        self._set_as_disconnected()
+        print("Disconnected!")
+
     async def on_ready(self):
         print(f'We have logged in as {client.user}')
         self.messages_cleanup.start()
@@ -288,7 +309,7 @@ class MyBot(discord.Client):
     @tasks.loop(seconds=5)
     async def messages_cleanup(self):
         async with self.messages_cleanup_lock:
-            print("Cleanup job start")
+            print("Messages cleanup job start")
             global global_thresholds_seconds
             job_start_timestamp = datetime.datetime.now(datetime.UTC)
             bottom_threshold = job_start_timestamp - datetime.timedelta(
@@ -307,7 +328,7 @@ class MyBot(discord.Client):
     @tasks.loop(seconds=15)
     async def task_timeout_cleanup(self):
         async with self.lock_timeout_cleanup:
-            print("Cleanup job start")
+            print("Timeout cleanup job start")
             for server in self.config.messages_db.servers.values():
                 server: MessagesDBServer
                 for author in server.authors.values():
@@ -316,28 +337,6 @@ class MyBot(discord.Client):
                         seconds=global_thresholds_seconds + 15)
                     if author.timed_out and author.timed_out_timestamp < timeout_bottom_threshold:
                         author.clear_cache_timout()
-
-    @property
-    def is_connected(self) -> bool:
-        return self.__connected
-
-    def _set_as_connected(self):
-        self.__connected = True
-
-    def _set_as_disconnected(self):
-        self.__connected = False
-
-    async def on_resumed(self):
-        self._set_as_connected()
-        print("Reconnected!")
-
-    async def on_connect(self):
-        self._set_as_connected()
-        print("Connected!")
-
-    async def on_disconnect(self):
-        self._set_as_disconnected()
-        print("Disconnected!")
 
     @tasks.loop(seconds=5)
     async def task_check_health(self):
