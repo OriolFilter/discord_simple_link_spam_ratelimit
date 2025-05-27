@@ -1,19 +1,13 @@
-# This example requires the 'message_content' intent.
 import dataclasses
 import datetime
 
 import discord
 
-# from discord import Message
-
-from discord.ext.commands import Context
 from discord.ext import tasks
-from discord.ext.commands import Cog
 import os
 from urlextract import URLExtract
 from urllib.parse import urlparse
 import asyncio
-from datetime import timezone
 
 
 @dataclasses.dataclass
@@ -147,7 +141,7 @@ class MyBot(discord.Client):
             messages_db=MessagesDB(),
             timeout_hours=5,
             roles_to_ping=os.getenv("DISCORD_ROLES_TO_PING_ID", "").split(),
-            server_id=os.getenv("DISCORD_SERVER_ID", "")
+            server_id=os.getenv("DISCORD_SERVER_ID")
         )
 
         self.messages_cleanup_lock = asyncio.Lock()
@@ -256,16 +250,6 @@ class MyBot(discord.Client):
                 await message.channel.send("Missing permissions when timing out user")
 
             # 3 Mention in the moderation_channel
-            # moderation_channel: discord.TextChannel | None = None
-            # for server in client.guilds:
-            #     server: discord.Guild
-            #     if int(server.id) == int(message.guild.id):
-            #         for channel in server.channels:
-            #             if channel.name == self.config.moderation_channel_name:
-            #                 moderation_channel = channel
-            # del server
-            # print(moderation_channel)
-
             moderation_channel = None
             if message.guild.public_updates_channel:
                 moderation_channel = message.guild.public_updates_channel
@@ -340,12 +324,22 @@ class MyBot(discord.Client):
 
     @tasks.loop(seconds=5)
     async def task_check_health(self):
-        file = '/tmp/healthz'
+        file = '/tmp/healthy'
         print(f"Is connected? {self.is_connected}")
-        with open(file, "w") as f:
-            f.write(("NOK", "OK")[self.is_connected])
-        if not self.is_connected:
-            await self.connect()
+
+        if self.is_connected:
+            with open(file, "w") as f:
+                f.write(("NOK", "OK")[self.is_connected])
+        else:
+            try:
+                os.remove(file)
+            except OSError:
+                pass
+
+            try:
+                await self.connect()
+            except Exception as e:
+                print(f"Error while attempting to reconnect. \n{e}")
 
 
 global_thresholds_seconds = 5
@@ -356,6 +350,6 @@ if __name__ == '__main__':
     _intents.message_content = True
     _intents.members = True
 
-    token = os.getenv("API_TOKEN")
+    token = os.getenv("DISCORD_API_TOKEN")
     client = MyBot(_intents)
     client.run(token)
