@@ -13,6 +13,12 @@ Simple discord bot to handle bots/hacked accounts that will spam links in variou
 
 ## FAQ
 
+### Which permissions does the bot need?
+
+- Read messages
+- Send messages (to the moderation channels too)
+- Time Out Members (remember to sort the roles by priority)
+
 ### Why hardcode the Server ID
 
 This is intended to be hosted in a specific server.
