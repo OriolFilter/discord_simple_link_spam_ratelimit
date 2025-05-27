@@ -1,0 +1,1 @@
+echo 'Staring' && python3 /main/main.py
