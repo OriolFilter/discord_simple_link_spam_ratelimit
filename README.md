@@ -7,9 +7,10 @@ Simple discord bot to handle bots/hacked accounts that will spam links in variou
 | ENV                           | Description                                                                                                                                                                                     | Required |
 |-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
 | DISCORD_API_TOKEN             | API token for your bot.                                                                                                                                                                         | [x]      |
-| DISCORD_MODERATION_CHANNEL_ID | If no ID is provided it will post a message for the moderators in the [Public Server Updates Channel](https://support.discord.com/hc/en-us/articles/360039181052-Public-Server-Updates-Channel) |          |
 | DISCORD_MODERATION_ROLES      | ID of the roles to ping when the moderation is triggered. Multiple IDs are allowed (space separated).  If not specified, it will **ping the server owner**.                                     |          |
 | DISCORD_SERVER_ID             | ID of the discord server to moderate. Will ignore the messages that don't match the server ID                                                                                                   | [x]      |
+
+[//]: # (| DISCORD_MODERATION_CHANNEL_ID | If no ID is provided it will post a message for the moderators in the [Public Server Updates Channel]&#40;https://support.discord.com/hc/en-us/articles/360039181052-Public-Server-Updates-Channel&#41; |          |)
 
 ## FAQ
 
@@ -21,6 +22,7 @@ Simple discord bot to handle bots/hacked accounts that will spam links in variou
 - Time Out Members
 - Kick Members  <-- new from v1.1
 - Ban Members  <-- new from v1.1
+- Link embeds  <-- new from v1.1
 
 ### Why hardcode the Server ID
 
@@ -56,6 +58,7 @@ oriolfilter/discord_simple_link_spam_ratelimit:latest
 
 ### Docker
 
+[//]: # (TODO Update )
 ```yaml
 services:
   discord_bot:
@@ -75,6 +78,7 @@ Please don't use environment vars, this is just an example.
 
 Secrets are good.
 
+[//]: # (TODO Update )
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
