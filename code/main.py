@@ -43,6 +43,9 @@ class MessagesDBServerAuthor:
                 count += 1
         return count
 
+    def count_total_sent_links_from_author(self, timestamp: datetime.datetime) -> int:
+        return sum([len(message.urls) for message in self.get_messages_within_threshold(timestamp) ])
+
     def get_messages_within_threshold(self, top_timestamp_threshold: datetime.datetime) -> list[MessageRecord]:
         message_list = []
         for message in self.messages:
@@ -93,6 +96,14 @@ class MessagesDBServer:
                 url=url
             )
 
+    def count_total_sent_links_from_author(self, author_id: int, timestamp: datetime.datetime) -> int:
+        if author_id not in self.authors.keys():
+            return 0
+        else:
+            return self.authors[author_id].count_total_sent_links_from_author(
+                timestamp=timestamp
+            )
+
 
 class MessagesDB:
     servers: dict[id: MessagesDBServer]
@@ -113,6 +124,15 @@ class MessagesDB:
                 author_id=author_id,
                 timestamp=timestamp,
                 url=url
+            )
+
+    def count_total_sent_links_from_author(self, server_id: int, author_id: int, timestamp: datetime.datetime) -> int:
+        if server_id not in self.servers.keys():
+            return 0
+        else:
+            return self.servers[server_id].count_total_sent_links_from_author(
+                author_id=author_id,
+                timestamp=timestamp
             )
 
 
@@ -205,7 +225,7 @@ class MyBot(discord.Client):
     async def review_user(self, message: discord.Message):
         author_messages_db: MessagesDBServerAuthor = self.config.messages_db.servers.get(message.guild.id).authors.get(
             message.author.id)
-        global global_count_threshold
+        global global_same_link_threshold
 
         triggered_timeout: bool = False
         triggered_timeout_url: str | None = None
@@ -214,6 +234,7 @@ class MyBot(discord.Client):
         sanitized_urls = author_messages_db.get_uniq_urls()
         # print(sanitized_urls)
 
+        # Review user for same URL posted.
         i = 0
         while not triggered_timeout and i < len(sanitized_urls):
             url: str = sanitized_urls[i]
@@ -223,15 +244,29 @@ class MyBot(discord.Client):
                 timestamp=message.created_at,
                 url=url
             )
-            # print(f"Count {count} for URL '{url}'")
-            if count > global_count_threshold:
+            print(f"User '{message.author.id}' Count '{count}' for URL '{url}'")
+            if count > global_same_link_threshold:
                 triggered_timeout = True
                 triggered_timeout_url = url
             i += 1
         del url, count
 
+        # Review user total URL posted.
+        if not triggered_timeout:
+            count = self.config.messages_db.count_total_sent_links_from_author(
+                server_id=message.guild.id,
+                author_id=message.author.id,
+                timestamp=message.created_at
+            )
+            print(f"User '{message.author.id}' Total count '{count}'")
+            if count > global_total_links_threshold:
+                triggered_timeout = True
+                triggered_timeout_url = "Multiple URL"  # IDK TODO
+            i += 1
+        del count
+
         if triggered_timeout and not author_messages_db.timed_out:
-            # print(f"user {message.author.name} triggered timeout with the url {triggered_timeout_url}")
+            print(f"user {message.author.name} triggered timeout with the url {triggered_timeout_url}")
 
             # 0. Check if user is timed out (to avoid further triggers)
             # if not message.author.is_timed_out():
@@ -244,7 +279,7 @@ class MyBot(discord.Client):
                                        f"moderators/admins.\n")
             try:
                 await message.author.timeout(datetime.timedelta(hours=self.config.timeout_hours),
-                                             reason=f"Triggered rate limit ({global_count_threshold} instances) with URL {triggered_timeout_url}")
+                                             reason=f"Triggered rate limit ({global_same_link_threshold} instances) with URL {triggered_timeout_url}")
             except discord.errors.Forbidden:
                 failed_to_timeout = True
                 await message.channel.send("Missing permissions when timing out user")
@@ -342,8 +377,9 @@ class MyBot(discord.Client):
                 print(f"Error while attempting to reconnect. \n{e}")
 
 
-global_thresholds_seconds = 5
-global_count_threshold = 3
+global_thresholds_seconds = 5  # Every when to clean up the internal cache/or also named as how wide is the margin.
+global_same_link_threshold = 3  # Total number of hits (per used) allowed. Triggers at 4
+global_total_links_threshold = 10  # Allowing a total of 10 links sent per used within 5 seconds. Triggers at 11
 
 if __name__ == '__main__':
     _intents = discord.Intents.default()

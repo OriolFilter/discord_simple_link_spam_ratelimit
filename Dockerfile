@@ -5,7 +5,7 @@ ARG BASEIMAGE="${IMAGE}:${TAG}"
 FROM ${BASEIMAGE}
 
 ARG BUILDDATE
-ARG VERSION="1"
+ARG VERSION="1.1"
 ARG REPOSITORY="https://github.com/OriolFilter/discord_simple_link_spam_ratelimit"
 
 LABEL "author"="Oriol Filter"
