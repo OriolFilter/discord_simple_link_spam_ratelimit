@@ -1,6 +1,3 @@
-import dataclasses
-import datetime
-
 import discord
 
 from discord.ext import tasks
@@ -8,140 +5,115 @@ import os
 from urlextract import URLExtract
 from urllib.parse import urlparse
 import asyncio
+from MessagesClasses import *
+from typing import Union
 
 
-@dataclasses.dataclass
-class MessageRecord:
-    id: int
-    author_id: int
-    server_id: int
-    creation_timestamp: datetime.datetime
-    urls: list[str]
-    message_url: str
+class ExceededTotalLinksRateLimit:
+    pass
 
 
-# Each user will have its own
-class MessagesDBServerAuthor:
-    messages: [MessageRecord]
-    id: int
-    timed_out: bool
-    timed_out_timestamp: datetime.datetime | None
-
-    def __init__(self, id: int):
-        self.messages = []
-        self.id = int(id)
-        self.timed_out = False
-
-    def add_message(self, message_object: MessageRecord):
-        self.messages.append(message_object)
-        # print(f"Total messages from user {message_object.author_id} ({len(self.messages)})")
-
-    def count_links_from_author(self, timestamp: datetime.datetime, url: str) -> int:
-        count = 0
-        for message in self.get_messages_within_threshold(timestamp):
-            if url in message.urls:
-                count += 1
-        return count
-
-    def count_total_sent_links_from_author(self, timestamp: datetime.datetime) -> int:
-        return sum([len(message.urls) for message in self.get_messages_within_threshold(timestamp) ])
-
-    def get_messages_within_threshold(self, top_timestamp_threshold: datetime.datetime) -> list[MessageRecord]:
-        message_list = []
-        for message in self.messages:
-            message: MessageRecord
-            global global_thresholds_seconds
-            bottom_threshold = top_timestamp_threshold - datetime.timedelta(seconds=global_thresholds_seconds)
-
-            if top_timestamp_threshold >= message.creation_timestamp >= bottom_threshold:
-                message_list.append(message)
-        return message_list
-
-    def get_uniq_urls(self) -> list[str]:
-
-        url_list = []
-        for message in self.messages:
-            message: MessageRecord
-            url_list += message.urls
-        url_list.sort()
-
-        return list(dict.fromkeys(url_list))
-
-    def set_cache_timeout(self):
-        self.timed_out = True
-        self.timed_out_timestamp = datetime.datetime.now()
-
-    def clear_cache_timout(self):
-        self.timed_out = False
-        self.timed_out_timestamp = None
+class ExceededSameLinkRateLimit:
+    pass
 
 
-class MessagesDBServer:
-    authors: {id: MessagesDBServerAuthor}
+class ModerationEmbed(discord.ui.View):
+    # Maybe do a moderation embed message that also sets who updated/moderated the bot etc. # TODO
+    # Maybe can make use of `original_response_message` for that
+    # Maybe use an embed for more fancy info display? IDK
+    allowed_moderation_roles: [int]
+    moderated_discord_user: Union[discord.User, discord.Member]
+    disabled = False
 
-    def __init__(self):
-        self.authors: dict[id: MessagesDBServerAuthor] = dict()
+    def __init__(self, moderated_discord_user: Union[discord.User, discord.Member], allowed_moderation_roles: [int],
+                 timeout=1200,  # 20 minutes
+                 reason: ExceededTotalLinksRateLimit | ExceededSameLinkRateLimit = None):
+        self.allowed_moderation_roles = allowed_moderation_roles
+        self.moderated_discord_user = moderated_discord_user
+        super().__init__(timeout=timeout)
 
-    def add_message(self, message_object: MessageRecord):
-        if message_object.author_id not in self.authors.keys():
-            self.authors[message_object.author_id] = MessagesDBServerAuthor(id=message_object.author_id)
-        self.authors[message_object.author_id].add_message(message_object)
+    @discord.ui.button(label="Remove timeout", style=discord.ButtonStyle.success)
+    async def remove_timout(self, interaction: discord.Interaction, button: discord.ui.Button):
+        button.style = discord.ButtonStyle.green
+        if interaction.user.guild_permissions.administrator or (
+                self.is_user_moderator(interaction.user) or
+                interaction.user.guild_permissions.moderate_members  # Refers to timeout
+        ):
+            try:
+                await self.moderated_discord_user.timeout(datetime.timedelta(seconds=0),
+                                                          reason=f"Removing timeout. Executed by user {interaction.user}")
+                await interaction.message.reply(f"User {interaction.user.mention} removed the timeout for {self.moderated_discord_user.mention}")
+            except discord.errors.Forbidden:
+                await interaction.message.reply(f"I (bot) don't have enough permissions to **TIMEOUT** {self.moderated_discord_user.mention} (being able to timeout is required to un-timeout).")
+            except Exception as e:
+                await interaction.message.reply(f"Unexpected error\n```{e}```")
 
-    def count_links_from_author(self, author_id: int, timestamp: datetime.datetime, url: str) -> int:
-        if author_id not in self.authors.keys():
-            return 0
+            button.disabled = True
+            await interaction.message.edit(view=self)
         else:
-            return self.authors[author_id].count_links_from_author(
-                timestamp=timestamp,
-                url=url
-            )
+            await interaction.message.reply(
+                content=f"User {interaction.user.mention} doesn't have permissions to timeout users.")
 
-    def count_total_sent_links_from_author(self, author_id: int, timestamp: datetime.datetime) -> int:
-        if author_id not in self.authors.keys():
-            return 0
+    @discord.ui.button(label="Kick User", style=discord.ButtonStyle.gray)
+    async def kick_user(self, interaction: discord.Interaction, button: discord.ui.Button):
+        button.style = discord.ButtonStyle.gray
+        if interaction.user.guild_permissions.administrator or (
+                self.is_user_moderator(interaction.user) or
+                interaction.user.guild_permissions.kick_members
+        ):
+            try:
+                await self.moderated_discord_user.kick(reason=f"Kicked user. Executed by user {interaction.user}")
+                await interaction.message.reply(
+                    f"User {interaction.user.mention} kicked {self.moderated_discord_user.mention}")
+            except discord.errors.Forbidden:
+                await interaction.message.reply(f"I (bot) don't have enough permissions to **KICK** {self.moderated_discord_user.mention}")
+            except Exception as e:
+                await interaction.message.reply(f"Unexpected error\n```{e}```")
         else:
-            return self.authors[author_id].count_total_sent_links_from_author(
-                timestamp=timestamp
-            )
+            await interaction.message.reply(
+                content=f"User {interaction.user.mention} doesn't have permissions to kick users.")
 
+    @discord.ui.button(label="Ban and remove messages from the last hour", style=discord.ButtonStyle.danger)
+    async def ban_user_and_cleanup_messages(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # button.style = discord.ButtonStyle.green
 
-class MessagesDB:
-    servers: dict[id: MessagesDBServer]
-
-    def __init__(self):
-        self.servers: dict[id: MessagesDBServer] = dict()
-
-    def add_message(self, message_object: MessageRecord):
-        if message_object.server_id not in self.servers.keys():
-            self.servers[message_object.server_id] = MessagesDBServer()
-        self.servers[message_object.server_id].add_message(message_object)
-
-    def count_links_from_author(self, server_id: int, author_id: int, timestamp: datetime.datetime, url: str) -> int:
-        if server_id not in self.servers.keys():
-            return 0
+        if interaction.user.guild_permissions.administrator or (
+                self.is_user_moderator(interaction.user) or
+                interaction.user.guild_permissions.ban_members
+        ):
+            try:
+                await self.moderated_discord_user.ban(reason=f"Baned user and deleted messages from the last hour "
+                                                             f"(3600s). Executed by user {interaction.user}.",
+                                                      delete_message_seconds=3600)
+                await interaction.message.reply(
+                    f"User {interaction.user.mention} baned {self.moderated_discord_user.mention} "
+                    f"and deleted messages from the last hour (3600s).")
+            except discord.errors.Forbidden:
+                await interaction.message.reply(f"I (bot) don't have enough permissions to **BAN** {self.moderated_discord_user.mention}")
+            except Exception as e:
+                await interaction.message.reply(f"Unexpected error\n```{e}```")
         else:
-            return self.servers[server_id].count_links_from_author(
-                author_id=author_id,
-                timestamp=timestamp,
-                url=url
-            )
+            await interaction.message.reply(
+                content=f"User {interaction.user.mention} doesn't have permissions to kick users.")
 
-    def count_total_sent_links_from_author(self, server_id: int, author_id: int, timestamp: datetime.datetime) -> int:
-        if server_id not in self.servers.keys():
-            return 0
-        else:
-            return self.servers[server_id].count_total_sent_links_from_author(
-                author_id=author_id,
-                timestamp=timestamp
-            )
+        button.disabled = True  # Should disable all the buttons.
+        # await
+        await interaction.message.edit(view=self)
+
+    def is_user_moderator(self, user: discord.User | discord.Member) -> bool:
+        ## Check roles
+        if len(set([role.id for role in user.roles]) & set(self.allowed_moderation_roles)) > 0:
+            print(f"Matched roles ID: {set([role.id for role in user.roles]) & set(self.allowed_moderation_roles)}")
+            return True
+        return False
 
 
 @dataclasses.dataclass
 class Config:
     messages_db: MessagesDB
     timeout_hours: int
-    roles_to_ping: list[str]
-    server_id: str | None
+    moderation_roles: list[int]
+    server_id: str | None  # Int? TODO
     # thresholds_seconds: int
     # count_threshold: 5
 
@@ -160,7 +132,7 @@ class MyBot(discord.Client):
         self.config = Config(
             messages_db=MessagesDB(),
             timeout_hours=5,
-            roles_to_ping=os.getenv("DISCORD_ROLES_TO_PING_ID", "").split(),
+            moderation_roles=[int(role_id) for role_id in os.getenv("DISCORD_MODERATION_ROLES", "").split()],
             server_id=os.getenv("DISCORD_SERVER_ID")
         )
 
@@ -193,13 +165,14 @@ class MyBot(discord.Client):
     async def on_ready(self):
         print(f'We have logged in as {client.user}')
         self.messages_cleanup.start()
+        self.task_timeout_cleanup.start()
         self.task_check_health.start()
 
     async def on_message(self, message: discord.Message):
-        if message.guild.id != self.config.server_id:
-            # Ignore other servers
-            pass
-        if message.author.bot:
+        print(self.config.server_id)
+        if message.guild.id != int(self.config.server_id):
+            print(f"Wrong server {message.author}")
+        elif message.author.bot:
             pass  # Ignore bots
         elif not message.guild.id:
             pass  # Ignore messages without guild id
@@ -262,10 +235,13 @@ class MyBot(discord.Client):
             if count > global_total_links_threshold:
                 triggered_timeout = True
                 triggered_timeout_url = "Multiple URL"  # IDK TODO
-            i += 1
-        del count
 
         if triggered_timeout and not author_messages_db.timed_out:
+            await message.channel.send("This message has buttons!",
+                                       view=ModerationEmbed(moderated_discord_user=message.author,
+                                                            allowed_moderation_roles=self.config.moderation_roles)
+                                       )
+
             print(f"user {message.author.name} triggered timeout with the url {triggered_timeout_url}")
 
             # 0. Check if user is timed out (to avoid further triggers)
@@ -292,12 +268,12 @@ class MyBot(discord.Client):
                 moderation_channel = message.channel
 
             mod_pings = ""
-            if len(self.config.roles_to_ping) < 1:
+            if len(self.config.moderation_roles) < 1:
                 server_owner = self.client.get_user(int(message.guild.owner_id))
                 mod_pings = f"\n++ {server_owner}"
 
             else:
-                mod_pings = "\n++ ".join([f"<@&{role_id}>" for role_id in self.config.roles_to_ping])
+                mod_pings = "\n++ ".join([f"<@&{role_id}>" for role_id in self.config.moderation_roles])
 
             # Messages currently stored from the user
             possible_recent_messages_from_user: list[MessageRecord] = self.get_recent_messages_from_user(
@@ -348,13 +324,14 @@ class MyBot(discord.Client):
     async def task_timeout_cleanup(self):
         async with self.lock_timeout_cleanup:
             print("Timeout cleanup job start")
+            job_start_timestamp = datetime.datetime.now(datetime.UTC)
+            bottom_threshold = job_start_timestamp - datetime.timedelta(
+                seconds=global_thresholds_seconds + 5)  # Adding an extra margin just in case
             for server in self.config.messages_db.servers.values():
                 server: MessagesDBServer
                 for author in server.authors.values():
                     author: MessagesDBServerAuthor
-                    timeout_bottom_threshold = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
-                        seconds=global_thresholds_seconds + 15)
-                    if author.timed_out and author.timed_out_timestamp < timeout_bottom_threshold:
+                    if author.timed_out and author.timed_out_timestamp < bottom_threshold:
                         author.clear_cache_timout()
 
     @tasks.loop(seconds=5)

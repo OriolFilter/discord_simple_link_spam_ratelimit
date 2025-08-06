@@ -8,7 +8,7 @@ Simple discord bot to handle bots/hacked accounts that will spam links in variou
 |-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
 | DISCORD_API_TOKEN             | API token for your bot.                                                                                                                                                                         | [x]      |
 | DISCORD_MODERATION_CHANNEL_ID | If no ID is provided it will post a message for the moderators in the [Public Server Updates Channel](https://support.discord.com/hc/en-us/articles/360039181052-Public-Server-Updates-Channel) |          |
-| DISCORD_ROLES_TO_PING_ID      | ID of the roles to ping when the moderation is triggered. Multiple IDs are allowed (space separated).  If not specified, it will **ping the server owner**.                                     |          |
+| DISCORD_MODERATION_ROLES      | ID of the roles to ping when the moderation is triggered. Multiple IDs are allowed (space separated).  If not specified, it will **ping the server owner**.                                     |          |
 | DISCORD_SERVER_ID             | ID of the discord server to moderate. Will ignore the messages that don't match the server ID                                                                                                   | [x]      |
 
 ## FAQ
@@ -16,8 +16,11 @@ Simple discord bot to handle bots/hacked accounts that will spam links in variou
 ### Which permissions does the bot need?
 
 - Read messages
+- Read messages history <-- new from v1.1
 - Send messages (to the moderation channels too)
-- Time Out Members (remember to sort the roles by priority)
+- Time Out Members
+- Kick Members  <-- new from v1.1
+- Ban Members  <-- new from v1.1
 
 ### Why hardcode the Server ID
 
@@ -62,7 +65,7 @@ services:
     environment:
       DISCORD_API_TOKEN: "000111222333"
       DISCORD_MODERATION_CHANNEL_ID: "1111111"
-      DISCORD_ROLES_TO_PING_ID: "43214321 89894848" 
+      DISCORD_MODERATION_ROLES: "43214321 89894848" 
       DISCORD_SERVER_ID: "9898989898"
 ```
 
@@ -121,7 +124,7 @@ spec:
               value: "000011112222334444555"
             - name: DISCORD_MODERATION_CHANNEL_ID
               value: '123412341234'
-            - name: DISCORD_ROLES_TO_PING_ID
+            - name: DISCORD_MODERATION_ROLES
               value: '2222222 33333 44444'
             - name: DISCORD_SERVER_ID
               value: '111111111'
