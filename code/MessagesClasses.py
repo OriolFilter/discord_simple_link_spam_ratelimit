@@ -1,6 +1,7 @@
 import dataclasses
 import datetime
 
+
 @dataclasses.dataclass
 class MessageRecord:
     id: int
@@ -9,6 +10,29 @@ class MessageRecord:
     creation_timestamp: datetime.datetime
     urls: list[str]
     message_url: str
+
+    # def __eq__(self, other):
+    #     print(f"comparing {self.__class__} and {other.__class__}")
+    #     if not isinstance(other, MessageRecord):
+    #         return False
+    #     return (
+    #             self.id == other.id and
+    #             self.author_id == other.author_id and
+    #             self.server_id == other.server_id and
+    #             # self.urls == other.urls and
+    #             self.message_url == other.message_url and
+    #             self.creation_timestamp == other.creation_timestamp
+    #             )
+    #
+    def __hash__(self):
+        # print(f"hashing {self.__class__}")
+        return hash((self.id,
+                     self.author_id,
+                     self.server_id,
+                     # self.urls,
+                     self.message_url,
+                     self.creation_timestamp
+                     ))
 
 
 # Each user will have its own
@@ -126,7 +150,6 @@ class MessagesDB:
                 author_id=author_id,
                 timestamp=timestamp
             )
-
 
 
 # TODO fix

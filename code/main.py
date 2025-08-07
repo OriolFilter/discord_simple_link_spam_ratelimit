@@ -124,6 +124,8 @@ class MyBot(discord.Client):
                 return ExceededTotalLinksRateLimit()
 
         moderation_status = ModerationStatus()
+        moderation_status.users_to_mention = [self.get_user(int(message.guild.owner_id))]
+
         if author_messages_db.timed_out:
             print(
                 f"Skipping checking user {message.author.id} due to existing in the cached timed out db ({message.author.name}|{message.author.display_name}|{message.author.global_name})")
@@ -144,17 +146,15 @@ class MyBot(discord.Client):
 
             # failed_to_timeout = False
             try:
-                # if type(moderation_status.trigger_reason) is ExceededSameLinkRateLimit:
-                #     await message.author.timeout(datetime.timedelta(hours=self.config.timeout_hours),
-                #                                  reason=f"Triggered rate limit ({global_same_link_threshold} instances) with URL ??")
-                # else:  # ExceededTotalLinksRateLimit
-                #     await message.author.timeout(datetime.timedelta(hours=self.config.timeout_hours),
-                #                                  reason=f"Triggered rate limit ({global_total_links_threshold} instances) with URL multiple URLs")
+                if type(moderation_status.trigger_reason) is ExceededSameLinkRateLimit:
+                    await message.author.timeout(datetime.timedelta(hours=self.config.timeout_hours),
+                                                 reason=f"Triggered rate limit ({global_same_link_threshold} instances) with URL ??")
+                else:  # ExceededTotalLinksRateLimit
+                    await message.author.timeout(datetime.timedelta(hours=self.config.timeout_hours),
+                                                 reason=f"Triggered rate limit ({global_total_links_threshold} instances) with URL multiple URLs")
                 moderation_status.preemptive_timeout_applied = True
             except discord.errors.Forbidden:
-                # failed_to_timeout = True # TODO don't use
-                # moderation_status.preemptive_timeout_applied = False # TODO redundant/remove?
-                await message.channel.send("Missing permissions when timing out user")
+                await message.channel.send(f"Missing permissions when timing out user {message.author.mention}")
 
             # Feedback/Message for the MODERATED USER
             await message.channel.send(content=f"# Preemptive timeout {message.author.mention}\n"
@@ -169,52 +169,31 @@ class MyBot(discord.Client):
             else:
                 moderation_channel = message.channel
 
-            # TODO remove
-            mod_pings = ""
-            if len(self.config.moderation_roles) < 1:
-                # Owner ID
-                server_owner = self.get_user(int(message.guild.owner_id))
-                moderation_status.users_to_mention = [server_owner]
-            # else:
-            #     moderation_status.roles_to_mention = self.config.moderation_roles # Redundant
-                # mod_pings = "\n++ ".join([f"<@&{role_id}>" for role_id in self.config.moderation_roles])
-
-            # Messages currently stored from the user
-
-            # TODO remove
-            # possible_recent_messages_from_user: list[MessageRecord] = self.get_recent_messages_from_user(
-            #     message.author.id)
-            moderation_status.possible_recent_messages = self.get_recent_messages_from_user(message.author.id)
-            # ## Format
-            # formated_list_possible_recent_messages_from_user = ""
-            # for possible_message in possible_recent_messages_from_user:
-            #     possible_message: MessageRecord
-            #     formated_list_possible_recent_messages_from_user += f"- {possible_message.message_url}\n"
-            # del possible_message
-
-            # if moderation_status.preemptive_timeout_applied:
-            #     await moderation_channel.send(
-            #         f"Wasn't able to timeout user {message.author.mention} due to an error of permissions.\nList of possible recent messages:\n{formated_list_possible_recent_messages_from_user}\n{mod_pings}")
-            # else:
-            # await moderation_channel.send(
-            #     f"User {message.author.mention} has been timeout for {self.config.timeout_hours} hours.\nList of possible recent messages:\n{formated_list_possible_recent_messages_from_user}\n{mod_pings}")
-
             author_messages_db.set_cache_timeout()
             moderation_buttons = ModerationEmbedClass(moderated_discord_user=message.author,
                                                       allowed_moderation_roles=self.config.moderation_roles,
                                                       config=self.config,
                                                       moderation_status=moderation_status,
                                                       discord_bot=self,
-                                                      # roles_to_mention =
                                                       )
-            # await message.channel.send(f"{moderation_channel.mention}")
+
             await moderation_channel.send(
-                content="\n".join(moderation_buttons.get_mentions()),
-                embed=moderation_buttons.get_status_embed(),
-                # moderation_buttons.get_status_message(),
-                view=moderation_buttons,
-                allowed_mentions=discord.AllowedMentions(users=True, roles=True)
+                content="\n".join(moderation_buttons.get_mentions())
             )
+
+            try:
+                await moderation_channel.send(
+                    embed=moderation_buttons.get_status_embed(),
+                    view=moderation_buttons,
+                )
+            except discord.errors.Forbidden:
+                print(f"No permissions to send embeds to channel {moderation_channel.id}")
+                moderation_buttons.embed_mode = False
+                await moderation_channel.send(
+                    content=moderation_buttons.get_status_text(),
+                    view=moderation_buttons,
+                )
+
 
             # 3. Remove recent messages  # Embed in the admins channel for admins to decide what to do with it?
 
