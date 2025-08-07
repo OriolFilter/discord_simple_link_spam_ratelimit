@@ -1,8 +1,11 @@
+from dataclasses import field
+
 import discord
 
 from typing import Union, Type
 from MessagesClasses import *
 from ConfigClasses import *
+from main import MyBot
 
 
 @dataclasses.dataclass
@@ -27,11 +30,12 @@ class ModerationStatus:
     user_kicked: bool = False  # Unused
     user_banned: bool = False  # Unused
 
-    trigger_reason = ExceededSameLinkRateLimit | ExceededTotalLinksRateLimit
-    possible_recent_messages = [MessageRecord]
+    trigger_reason: ExceededSameLinkRateLimit | ExceededTotalLinksRateLimit | None = field(default=None)
+    possible_recent_messages: [MessageRecord] = field(default_factory=list)
+    #
+    # # roles_to_mention = [int] # Redundant, use self.config.moderation_roles
+    users_to_mention: [discord.User] = field(default_factory=list)
 
-    # roles_to_mention = [int] # Redundant, use self.config.moderation_roles
-    users_to_mention = [discord.User]
 
 
 class ModerationEmbedClass(discord.ui.View):
@@ -47,14 +51,14 @@ class ModerationEmbedClass(discord.ui.View):
     def __init__(self, moderated_discord_user: Union[discord.User, discord.Member], allowed_moderation_roles: [int],
                  config: Config,
                  moderation_status: ModerationStatus,
-                 discord_bot_info: discord.ClientUser,
+                 discord_bot: MyBot,
                  timeout=1200,  # 20 minutes
                  ):
         self.allowed_moderation_roles = allowed_moderation_roles
         self.moderated_discord_user = moderated_discord_user
         self.config = config
         self.moderation_status = moderation_status
-        self.discord_bot_info = discord_bot_info
+        self.discord_bot = discord_bot
         super().__init__(timeout=timeout)
 
     @discord.ui.button(label="Remove timeout", style=discord.ButtonStyle.success)
@@ -150,30 +154,44 @@ class ModerationEmbedClass(discord.ui.View):
         #                       timestamp=datetime.datetime.now())
         embed = discord.Embed(colour=0x00b0f4, timestamp=datetime.datetime.now())
 
-        embed.set_author(name=self.discord_bot_info.name,
-                         # url="https://example.com" # TODO set image
+        embed.description = (f"# {self.moderated_discord_user.mention}\n"
+                             f"## Trigger reason\n"
+                             f"{self.moderation_status.trigger_reason.__class__.__name__}")
+
+        print(embed.description)
+        embed.set_author(name=self.discord_bot.user.display_name,
+                         icon_url=self.discord_bot.user.display_avatar,
+                         url="https://github.com/OriolFilter/discord_simple_link_spam_ratelimit"
                          )
-        embed.description = f"# {self.moderated_discord_user.mention}"
-        embed.add_field(name="Trigger reason",
-                        value=str(self.moderation_status.trigger_reason),
-                        inline=True)
+
+        # embed.add_field(name="Trigger reason",
+        #                 value=str(self.moderation_status.trigger_reason.__class__.__name__),
+        #                 inline=False)
+        # TODO cleanup
+        # possible_recent_messages_from_user: list[MessageRecord] = self.discord_bot.get_recent_messages_from_user(self.moderated_discord_user.id)
+        # moderation_status.possible_recent_messages = self.get_recent_messages_from_user(message.author.id)
+        ## Format
+        # formated_list_possible_recent_messages_from_user = ""
+        # for possible_message in self.moderation_status.possible_recent_messages:
+        #     possible_message: MessageRecord
+        #     formated_list_possible_recent_messages_from_user += f"- {possible_message.message_url}\n"
+        # del possible_message
+
+        embed.add_field(name="Possible recent messages",
+                        value="\n".join([f"- {message.message_url}" for message in self.moderation_status.possible_recent_messages]),
+                        inline=False)
+
         # embed.add_field(name="The second inline field.",
         #                 value="Inline fields are stacked next to each other.",
         #                 inline=True)
         # embed.add_field(name="The third inline field.",
         #                 value="You can have up to 3 inline fields in a row.",
         #                 inline=True)
+
+        # Mentions dont work from the embed itself
         # embed.add_field(name="Mentions",
-
-        if len(self.moderation_status.users_to_mention) > 0:
-            embed.add_field(name="User Mentions",
-                            value="\n".join([f"++ {user.mention}" for user in self.moderation_status.users_to_mention]),
-                            inline=True)
-
-        if len(self.config.moderation_roles) > 0:
-            embed.add_field(name="Role Mentions",
-                            value="\n".join([f"++ <@&{role_id}>" for role_id in self.config.moderation_roles]),
-                            inline=True)
+        #                 value="\n".join(self.get_mentions()),
+        #                 inline=True)
 
         embed.set_image(url="https://cubedhuang.com/images/alex-knight-unsplash.webp")
 
@@ -186,3 +204,26 @@ class ModerationEmbedClass(discord.ui.View):
         # return (f"# Preemtive timeout {self.moderated_discord_user.mention}\n"
         #         f"## Timout hours: {self.config.timeout_hours}\n"
         #         f"If you believe this is was a mistake, please contact the moderators/admins.\n")
+
+    def get_mentions(self) -> [str]:
+        mention_list = []
+        print(self.moderation_status.users_to_mention)
+        if len(self.moderation_status.users_to_mention) > 0:
+            for user in self.moderation_status.users_to_mention:
+                print(user.id)
+                # mention_list.append(f"<@&{user.id}>")
+                mention_list.append(user.mention)
+
+            # embed.add_field(name="User Mentions",
+            #                 value="\n".join([f"++ {user.mention}" for user in self.moderation_status.users_to_mention]),
+            #                 inline=True)
+
+        if len(self.config.moderation_roles) > 0:
+            for role_id in self.config.moderation_roles:
+                mention_list.append(f"<@&{role_id}>")
+        print(mention_list)
+        return mention_list
+
+            # embed.add_field(name="Role Mentions",
+            #                 value="\n".join([f"++ <@&{role_id}>" for role_id in self.config.moderation_roles]),
+            #                 inline=True)

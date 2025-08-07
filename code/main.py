@@ -182,15 +182,15 @@ class MyBot(discord.Client):
             # Messages currently stored from the user
 
             # TODO remove
-            possible_recent_messages_from_user: list[MessageRecord] = self.get_recent_messages_from_user(
-                message.author.id)
+            # possible_recent_messages_from_user: list[MessageRecord] = self.get_recent_messages_from_user(
+            #     message.author.id)
             moderation_status.possible_recent_messages = self.get_recent_messages_from_user(message.author.id)
-            ## Format
-            formated_list_possible_recent_messages_from_user = ""
-            for possible_message in possible_recent_messages_from_user:
-                possible_message: MessageRecord
-                formated_list_possible_recent_messages_from_user += f"- {possible_message.message_url}\n"
-            del possible_message
+            # ## Format
+            # formated_list_possible_recent_messages_from_user = ""
+            # for possible_message in possible_recent_messages_from_user:
+            #     possible_message: MessageRecord
+            #     formated_list_possible_recent_messages_from_user += f"- {possible_message.message_url}\n"
+            # del possible_message
 
             # if moderation_status.preemptive_timeout_applied:
             #     await moderation_channel.send(
@@ -204,14 +204,16 @@ class MyBot(discord.Client):
                                                       allowed_moderation_roles=self.config.moderation_roles,
                                                       config=self.config,
                                                       moderation_status=moderation_status,
-                                                      discord_bot_info=self.user,
+                                                      discord_bot=self,
                                                       # roles_to_mention =
                                                       )
             # await message.channel.send(f"{moderation_channel.mention}")
             await moderation_channel.send(
+                content="\n".join(moderation_buttons.get_mentions()),
                 embed=moderation_buttons.get_status_embed(),
                 # moderation_buttons.get_status_message(),
-                view=moderation_buttons
+                view=moderation_buttons,
+                allowed_mentions=discord.AllowedMentions(users=True, roles=True)
             )
 
             # 3. Remove recent messages  # Embed in the admins channel for admins to decide what to do with it?
