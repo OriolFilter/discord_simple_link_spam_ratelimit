@@ -63,6 +63,46 @@ oriolfilter/discord_simple_link_spam_ratelimit:latest
 
 ## Building
 
+Multi-platform build
+
+```shell
+$ ./build.sh
+```
+
+```text
+[+] Building 0.0s (0/0)                                                                                                                                                                                           docker:default
+ERROR: failed to build: Multi-platform build is not supported for the docker driver.
+Switch to a different driver, or turn on the containerd image store, and try again.
+Learn more at https://docs.docker.com/go/build-multi-platform/
+```
+
+Install QUEMU
+
+```shell
+docker run --privileged --rm tonistiigi/binfmt --install all
+```
+
+```shell
+docker buildx ls
+```
+
+```text
+
+NAME/NODE     DRIVER/ENDPOINT   STATUS    BUILDKIT   PLATFORMS
+default*      docker                                 
+ \_ default    \_ default       running   v0.23.2    linux/amd64 (+3), linux/arm64, linux/arm (+2), linux/ppc64le, (6 more)
+```
+
+Create a builder instance for each platform
+
+```shell
+docker buildx create --name mybuilder --use
+```
+
+Then try to build again.
+
+For more info refer to the [official Docker documentation for building multi-platform builds.](https://docs.docker.com/build/building/multi-platform/#qemu) 
+
 ## Running
 
 ### Docker
