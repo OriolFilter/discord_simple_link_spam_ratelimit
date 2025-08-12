@@ -21,13 +21,15 @@ class ThresholdConfig:
         self.global_total_links_threshold = self.global_total_links_threshold or int(
             os.getenv("GLOBAL_TOTAL_LINKS_THRESHOLD", 5))
 
+        print(self.__dict__)
+
 
 @dataclasses.dataclass
 class Config:
     messages_db: MessagesDB
     timeout_hours: int = 5  # On trigger set 5h of timeout
     moderation_roles: list[int] = field(default=list)
-    server_id: str | None = None
+    server_id: int | None = None
     threshold_config: ThresholdConfig = None
 
     # thresholds_seconds: int
@@ -35,6 +37,8 @@ class Config:
     def __post_init__(self):
         self.moderation_roles = [int(role_id) for role_id in os.getenv("DISCORD_MODERATION_ROLES", "").split()]
 
-        self.server_id = os.getenv("DISCORD_SERVER_ID")
+        self.server_id = int(os.getenv("DISCORD_SERVER_ID"))
 
         self.threshold_config = self.threshold_config or ThresholdConfig()
+
+        print(self.__dict__)

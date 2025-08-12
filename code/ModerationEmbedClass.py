@@ -66,6 +66,10 @@ class ModerationEmbedClass(discord.ui.View):
         self.discord_bot = discord_bot
         super().__init__(timeout=timeout)
 
+    # TODO
+    # async def interaction_check(self, interaction: discord.Interaction) -> bool:
+    #     return False
+
     @discord.ui.button(label="Remove timeout", style=discord.ButtonStyle.success)
     async def remove_timout(self, interaction: discord.Interaction, button: discord.ui.Button):
         button.style = discord.ButtonStyle.green

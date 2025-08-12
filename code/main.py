@@ -187,9 +187,6 @@ class MyBot(discord.Client):
                     view=moderation_buttons,
                 )
 
-
-            # 3. Remove recent messages  # Embed in the admins channel for admins to decide what to do with it?
-
     def get_recent_messages_from_user(self, user_id: int) -> list[MessageRecord]:
         for server in self.config.messages_db.servers.values():
             server: MessagesDBServer
