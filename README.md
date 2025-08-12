@@ -10,14 +10,14 @@ Covers the following scenarios **per user**:
 
 ## ENV
 
-| ENV                         | Default | Description                                                                                                                                                 | Required |
-|-----------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
-| DISCORD_API_TOKEN           | ---     | API token for your bot.                                                                                                                                     | [x]      |
-| DISCORD_MODERATION_ROLES    | ---     | ID of the roles to ping when the moderation is triggered. Multiple IDs are allowed (space separated).  If not specified, it will **ping the server owner**. | []       |
-| DISCORD_SERVER_ID           | ---     | ID of the discord server to moderate. Will ignore the messages that don't match the server ID                                                               | [x]      |
-| THRESHOLD_SECONDS           | 3       | Every when to clean up the internal cache/or also named as how wide is the margin.                                                                          | []       |
-| THRESHOLD_SAME_LINK_LIMIT   | 5       | Total number of hits (per user and same link) allowed. Triggers when count is above the limit.                                                              | []       |
-| THRESHOLD_TOTAL_LINKS_LIMIT | 8       | Total number of total hits/links (per user) allowed. Triggers when count is above the limit.                                                                | []       |
+| ENV                         | Default | Description                                                                                                                                                 | Required                    |
+|-----------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|
+| DISCORD_API_TOKEN           | ---     | API token for your bot.                                                                                                                                     | <ul><li>[x] item1</li></ul> |
+| DISCORD_MODERATION_ROLES    | ---     | ID of the roles to ping when the moderation is triggered. Multiple IDs are allowed (space separated).  If not specified, it will **ping the server owner**. | <ul><li>[] item1</li></ul>  |
+| DISCORD_SERVER_ID           | ---     | ID of the discord server to moderate. Will ignore the messages that don't match the server ID                                                               | <ul><li>[x] item1</li></ul> |
+| THRESHOLD_SECONDS           | 3       | Every when to clean up the internal cache/or also named as how wide is the margin.                                                                          | <ul><li>[] item1</li></ul>  |
+| THRESHOLD_SAME_LINK_LIMIT   | 5       | Total number of hits (per user and same link) allowed. Triggers when count is above the limit.                                                              | <ul><li>[] item1</li></ul>  |
+| THRESHOLD_TOTAL_LINKS_LIMIT | 8       | Total number of total hits/links (per user) allowed. Triggers when count is above the limit.                                                                | <ul><li>[] item1</li></ul>  |
 
 [//]: # (| DISCORD_MODERATION_CHANNEL_ID | If no ID is provided it will post a message for the moderators in the [Public Server Updates Channel]&#40;https://support.discord.com/hc/en-us/articles/360039181052-Public-Server-Updates-Channel&#41; |          |)
 
