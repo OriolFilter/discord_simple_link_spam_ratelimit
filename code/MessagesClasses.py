@@ -1,6 +1,6 @@
 import dataclasses
 import datetime
-from ConfigClasses import ThresholdConfig
+from ThresholdConfigClass import ThresholdConfig
 
 
 @dataclasses.dataclass
@@ -42,7 +42,7 @@ class MessagesDBServerAuthor:
     id: int
     timed_out: bool
     timed_out_timestamp: datetime.datetime | None
-    config: ThresholdConfig
+    config = ThresholdConfig
 
     def __init__(self, id: int, config: ThresholdConfig):
         self.messages = []
@@ -69,7 +69,7 @@ class MessagesDBServerAuthor:
         for message in self.messages:
             message: MessageRecord
             bottom_threshold = top_timestamp_threshold - datetime.timedelta(
-                seconds=self.config.global_thresholds_seconds)
+                seconds=self.config.threshold_seconds)
 
             if top_timestamp_threshold >= message.creation_timestamp >= bottom_threshold:
                 message_list.append(message)
@@ -97,7 +97,7 @@ class MessagesDBServerAuthor:
 
 class MessagesDBServer:
     authors: {id: MessagesDBServerAuthor}
-    config: ThresholdConfig
+    config = ThresholdConfig
 
     def __init__(self, config: ThresholdConfig):
         self.authors: dict[id: MessagesDBServerAuthor] = dict()

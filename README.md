@@ -4,11 +4,14 @@ Simple discord bot to handle bots/hacked accounts that will spam links in variou
 
 ## ENV
 
-| ENV                           | Description                                                                                                                                                                                     | Required |
-|-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
-| DISCORD_API_TOKEN             | API token for your bot.                                                                                                                                                                         | [x]      |
-| DISCORD_MODERATION_ROLES      | ID of the roles to ping when the moderation is triggered. Multiple IDs are allowed (space separated).  If not specified, it will **ping the server owner**.                                     |          |
-| DISCORD_SERVER_ID             | ID of the discord server to moderate. Will ignore the messages that don't match the server ID                                                                                                   | [x]      |
+| ENV                         | Default | Description                                                                                                                                                 | Required |
+|-----------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
+| DISCORD_API_TOKEN           | ---     | API token for your bot.                                                                                                                                     | [x]      |
+| DISCORD_MODERATION_ROLES    | ---     | ID of the roles to ping when the moderation is triggered. Multiple IDs are allowed (space separated).  If not specified, it will **ping the server owner**. | []       |
+| DISCORD_SERVER_ID           | ---     | ID of the discord server to moderate. Will ignore the messages that don't match the server ID                                                               | [x]      |
+| THRESHOLD_SECONDS           | 3       | Every when to clean up the internal cache/or also named as how wide is the margin.                                                                          | []       |
+| THRESHOLD_SAME_LINK_LIMIT   | 5       | Total number of hits (per user and same link) allowed. Triggers when count is above the limit.                                                              | []       |
+| THRESHOLD_TOTAL_LINKS_LIMIT | 8       | Total number of total hits/links (per user) allowed. Triggers when count is above the limit.                                                                | []       |
 
 [//]: # (| DISCORD_MODERATION_CHANNEL_ID | If no ID is provided it will post a message for the moderators in the [Public Server Updates Channel]&#40;https://support.discord.com/hc/en-us/articles/360039181052-Public-Server-Updates-Channel&#41; |          |)
 
@@ -58,7 +61,6 @@ oriolfilter/discord_simple_link_spam_ratelimit:latest
 
 ### Docker
 
-[//]: # (TODO Update )
 ```yaml
 services:
   discord_bot:
@@ -67,7 +69,6 @@ services:
     restart: always
     environment:
       DISCORD_API_TOKEN: "000111222333"
-      DISCORD_MODERATION_CHANNEL_ID: "1111111"
       DISCORD_MODERATION_ROLES: "43214321 89894848" 
       DISCORD_SERVER_ID: "9898989898"
 ```
@@ -78,7 +79,6 @@ Please don't use environment vars, this is just an example.
 
 Secrets are good.
 
-[//]: # (TODO Update )
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -126,8 +126,6 @@ spec:
               value: 'Europe/Madrid'
             - name: DISCORD_API_TOKEN
               value: "000011112222334444555"
-            - name: DISCORD_MODERATION_CHANNEL_ID
-              value: '123412341234'
             - name: DISCORD_MODERATION_ROLES
               value: '2222222 33333 44444'
             - name: DISCORD_SERVER_ID

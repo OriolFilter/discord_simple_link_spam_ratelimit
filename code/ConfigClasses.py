@@ -1,38 +1,18 @@
+import dataclasses
 from dataclasses import field
 
 from MessagesClasses import MessagesDB
 import os
-
-@dataclasses.dataclass
-class ThresholdConfig:
-    # Every when to clean up the internal cache/or also named as how wide is the margin.
-    global_thresholds_seconds = None
-    # Total number of hits (per used) allowed. Triggers at 4
-    global_same_link_threshold = None
-    # Allowing a total of 10 links sent per used within 5 seconds. Triggers at 11
-    global_total_links_threshold = None
-
-    def __post_init__(self):
-        self.global_thresholds_seconds = self.global_thresholds_seconds or int(
-            os.getenv("GLOBAL_THRESHOLDS_SECONDS", 3))
-        self.global_same_link_threshold = self.global_same_link_threshold or int(
-            os.getenv("GLOBAL_SAME_LINK_THRESHOLD", 5))
-        self.global_total_links_threshold = self.global_total_links_threshold or int(
-            os.getenv("GLOBAL_TOTAL_LINKS_THRESHOLD", 8))
-
-        # print(self.__dict__)
-
+from ThresholdConfigClass import ThresholdConfig
 
 @dataclasses.dataclass
 class Config:
-    messages_db: MessagesDB
+    messages_db: MessagesDB = field(default=None)
     timeout_hours: int = 5  # On trigger set 5h of timeout
     moderation_roles: list[int] = field(default=list)
     server_id: int | None = None
     threshold_config: ThresholdConfig = None
 
-    # thresholds_seconds: int
-    # count_threshold: 5
     def __post_init__(self):
         self.moderation_roles = [int(role_id) for role_id in os.getenv("DISCORD_MODERATION_ROLES", "").split()]
         if len(self.moderation_roles) < 1:
@@ -48,5 +28,7 @@ class Config:
             raise e
 
         self.threshold_config = self.threshold_config or ThresholdConfig()
+
+        self.messages_db = MessagesDB(config=self.threshold_config)
 
         # print(self.__dict__)
