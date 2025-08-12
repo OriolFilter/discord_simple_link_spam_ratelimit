@@ -85,9 +85,7 @@ class ModerationEmbedClass(discord.ui.View):
 
                 self.user_that_removed_timeout = interaction.user
                 button.disabled = True
-                # TODO check for defer/fix
-                # await interaction.response.defer()
-                await interaction.message.edit(view=self, embed=self.get_status_embed())
+                await interaction.response.edit_message(view=self, embed=self.get_status_embed(), self=self)
 
             except discord.errors.Forbidden:
                 await interaction.message.reply(
@@ -113,7 +111,7 @@ class ModerationEmbedClass(discord.ui.View):
 
                 self.user_that_kicked = interaction.user
                 button.disabled = True
-                await interaction.message.edit(view=self, embed=self.get_status_embed())
+                await interaction.response.edit_message(view=self, embed=self.get_status_embed(), self=self)
 
             except discord.errors.Forbidden:
                 await interaction.message.reply(
@@ -143,7 +141,7 @@ class ModerationEmbedClass(discord.ui.View):
 
                 self.user_that_banned = interaction.user
                 button.disabled = True
-                await interaction.message.edit(view=self, embed=self.get_status_embed())
+                await interaction.response.edit_message(view=self, embed=self.get_status_embed(), self=self)
 
             except discord.errors.Forbidden:
                 await interaction.message.reply(
@@ -174,7 +172,7 @@ class ModerationEmbedClass(discord.ui.View):
         embed = discord.Embed(colour=0x00b0f4, timestamp=datetime.datetime.now())
 
         embed.description = "".join(["# {}\n".format(self.moderated_discord_user.mention),
-                                     f"## Trigger reason\n",
+                                     f"## Trigger reason  {datetime.datetime.now()}\n",
                                      f"### {self.moderation_status.trigger_reason.__class__.__name__} \n",
                                      f"## Possible recent messages\n",
                                      "\n".join([f"- {message.message_url}" for message
