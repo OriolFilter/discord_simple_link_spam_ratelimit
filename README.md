@@ -12,9 +12,9 @@ Covers the following scenarios **per user**:
 
 | ENV                         | Default | Description                                                                                                                                                 | Required |
 |-----------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
-| DISCORD_API_TOKEN           | ---     | API token for your bot.                                                                                                                                     | ✅        |
-| DISCORD_MODERATION_ROLES    | ---     | ID of the roles to ping when the moderation is triggered. Multiple IDs are allowed (space separated).  If not specified, it will **ping the server owner**. | ❌        |
-| DISCORD_SERVER_ID           | ---     | ID of the discord server to moderate. Will ignore the messages that don't match the server ID                                                               | ✅        |
+| DISCORD_API_TOKEN           | <Null>     | API token for your bot.                                                                                                                                     | ✅        |
+| DISCORD_MODERATION_ROLES    | <Null>     | ID of the roles to ping when the moderation is triggered. Multiple IDs are allowed (space separated).  If not specified, it will **ping the server owner**. | ❌        |
+| DISCORD_SERVER_ID           | <Null>     | ID of the discord server to moderate. Will ignore the messages that don't match the server ID                                                               | ✅        |
 | THRESHOLD_SECONDS           | 3       | Every when to clean up the internal cache/or also named as how wide is the margin.                                                                          | ❌        |
 | THRESHOLD_SAME_LINK_LIMIT   | 5       | Total number of hits (per user and same link) allowed. Triggers when count is above the limit.                                                              | ❌        |
 | THRESHOLD_TOTAL_LINKS_LIMIT | 8       | Total number of total hits/links (per user) allowed. Triggers when count is above the limit.                                                                | ❌        |
