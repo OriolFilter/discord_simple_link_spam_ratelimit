@@ -68,6 +68,10 @@ class MyBot(discord.Client):
 
             urlextract = extractor.find_urls(message.content)
             sanitized_urls = [f"{urlparse(link).netloc}/{urlparse(link).path}" for link in urlextract]
+            # Add attachments to sanitized URL
+            for attachment in message.attachments:
+                sanitized_urls.append(attachment.url)
+
             # Ignore cases where no links are provided.
             if len(sanitized_urls) > 0:
                 message_object = MessageRecord(

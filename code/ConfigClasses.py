@@ -19,7 +19,7 @@ class ThresholdConfig:
         self.global_same_link_threshold = self.global_same_link_threshold or int(
             os.getenv("GLOBAL_SAME_LINK_THRESHOLD", 5))
         self.global_total_links_threshold = self.global_total_links_threshold or int(
-            os.getenv("GLOBAL_TOTAL_LINKS_THRESHOLD", 5))
+            os.getenv("GLOBAL_TOTAL_LINKS_THRESHOLD", 8))
 
         # print(self.__dict__)
 
