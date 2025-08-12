@@ -21,7 +21,7 @@ class MyBot(discord.Client):
         super().__init__(intents=intents)
         self._set_as_disconnected()
 
-        self.config = Config(messages_db=MessagesDB())
+        self.config = Config(messages_db=MessagesDB(config=self.config))
 
         self.messages_cleanup_lock = asyncio.Lock()
         self.lock_timeout_cleanup = asyncio.Lock()
@@ -134,9 +134,6 @@ class MyBot(discord.Client):
             print(
                 f"Timeout trigger! {moderation_status.trigger_reason}. User {message.author.name}. Reason {type(moderation_status.trigger_reason)}.")
 
-            # if type(moderation_status.trigger_reason) is ExceededSameLinkRateLimit:
-            #     print(f"user {message.author.name} triggered timeout with the url ??")
-            # TODO cleanup this comments
             # 0. Check if user is timed out (to avoid further triggers)
             # if not message.author.is_timed_out():
             # 1. Timeout the user
@@ -249,8 +246,6 @@ class MyBot(discord.Client):
                 await self.connect()
             except Exception as e:
                 print(f"Error while attempting to reconnect. \n{e}")
-
-
 
 
 if __name__ == '__main__':

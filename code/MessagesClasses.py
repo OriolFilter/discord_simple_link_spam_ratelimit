@@ -1,5 +1,6 @@
 import dataclasses
 import datetime
+from ConfigClasses import ThresholdConfig
 
 
 @dataclasses.dataclass
@@ -41,11 +42,13 @@ class MessagesDBServerAuthor:
     id: int
     timed_out: bool
     timed_out_timestamp: datetime.datetime | None
+    config: ThresholdConfig
 
-    def __init__(self, id: int):
+    def __init__(self, id: int, config: ThresholdConfig):
         self.messages = []
         self.id = int(id)
         self.timed_out = False
+        self.config = config
 
     def add_message(self, message_object: MessageRecord):
         self.messages.append(message_object)
@@ -65,8 +68,8 @@ class MessagesDBServerAuthor:
         message_list = []
         for message in self.messages:
             message: MessageRecord
-            global global_thresholds_seconds
-            bottom_threshold = top_timestamp_threshold - datetime.timedelta(seconds=global_thresholds_seconds)
+            bottom_threshold = top_timestamp_threshold - datetime.timedelta(
+                seconds=self.config.global_thresholds_seconds)
 
             if top_timestamp_threshold >= message.creation_timestamp >= bottom_threshold:
                 message_list.append(message)
@@ -94,13 +97,16 @@ class MessagesDBServerAuthor:
 
 class MessagesDBServer:
     authors: {id: MessagesDBServerAuthor}
+    config: ThresholdConfig
 
-    def __init__(self):
+    def __init__(self, config: ThresholdConfig):
         self.authors: dict[id: MessagesDBServerAuthor] = dict()
+        self.config = config
 
     def add_message(self, message_object: MessageRecord):
         if message_object.author_id not in self.authors.keys():
-            self.authors[message_object.author_id] = MessagesDBServerAuthor(id=message_object.author_id)
+            self.authors[message_object.author_id] = MessagesDBServerAuthor(id=message_object.author_id,
+                                                                            config=self.config)
         self.authors[message_object.author_id].add_message(message_object)
 
     def count_links_from_author(self, author_id: int, timestamp: datetime.datetime, url: str) -> int:
@@ -123,13 +129,15 @@ class MessagesDBServer:
 
 class MessagesDB:
     servers: dict[id: MessagesDBServer]
+    config: ThresholdConfig
 
-    def __init__(self):
+    def __init__(self, config: ThresholdConfig):
         self.servers: dict[id: MessagesDBServer] = dict()
+        self.config = config
 
     def add_message(self, message_object: MessageRecord):
         if message_object.server_id not in self.servers.keys():
-            self.servers[message_object.server_id] = MessagesDBServer()
+            self.servers[message_object.server_id] = MessagesDBServer(config=self.config)
         self.servers[message_object.server_id].add_message(message_object)
 
     def count_links_from_author(self, server_id: int, author_id: int, timestamp: datetime.datetime, url: str) -> int:
@@ -150,7 +158,3 @@ class MessagesDB:
                 author_id=author_id,
                 timestamp=timestamp
             )
-
-
-# TODO fix
-global_thresholds_seconds = 5  # Every when to clean up the internal cache/or also named as how wide is the margin.

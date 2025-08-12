@@ -1,8 +1,7 @@
 from dataclasses import field
 
-from MessagesClasses import *
+from MessagesClasses import MessagesDB
 import os
-
 
 @dataclasses.dataclass
 class ThresholdConfig:
@@ -40,7 +39,7 @@ class Config:
             print("No moderation roles (env DISCORD_MODERATION_ROLES) were specified. If no moderation_roles are set, "
                   "only the server owner will be able interact with this bot.")
         # TODO maybe only check for permissions and forget about moderation roles? That way can be used in multiple
-        #  servers
+        #  servers, still might be important to limit to "which servers" it operates.
 
         try:
             self.server_id = int(os.getenv("DISCORD_SERVER_ID"))
