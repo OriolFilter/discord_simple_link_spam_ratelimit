@@ -154,5 +154,3 @@ class MessagesDB:
 
 # TODO fix
 global_thresholds_seconds = 5  # Every when to clean up the internal cache/or also named as how wide is the margin.
-global_same_link_threshold = 3  # Total number of hits (per used) allowed. Triggers at 4
-global_total_links_threshold = 10  # Allowing a total of 10 links sent per used within 5 seconds. Triggers at 11

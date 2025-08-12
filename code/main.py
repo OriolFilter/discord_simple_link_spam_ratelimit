@@ -21,12 +21,7 @@ class MyBot(discord.Client):
         super().__init__(intents=intents)
         self._set_as_disconnected()
 
-        self.config = Config(
-            messages_db=MessagesDB(),
-            timeout_hours=5,
-            moderation_roles=[int(role_id) for role_id in os.getenv("DISCORD_MODERATION_ROLES", "").split()],
-            server_id=os.getenv("DISCORD_SERVER_ID")
-        )
+        self.config = Config(messages_db=MessagesDB())
 
         self.messages_cleanup_lock = asyncio.Lock()
         self.lock_timeout_cleanup = asyncio.Lock()
@@ -62,7 +57,7 @@ class MyBot(discord.Client):
 
     async def on_message(self, message: discord.Message):
         print(self.config.server_id)
-        if message.guild.id != int(self.config.server_id):
+        if message.guild.id != self.config.server_id:
             print(f"Wrong server {message.author}")
         elif message.author.bot:
             pass  # Ignore bots
@@ -91,8 +86,6 @@ class MyBot(discord.Client):
         author_messages_db: MessagesDBServerAuthor = self.config.messages_db.servers.get(message.guild.id).authors.get(
             message.author.id)
 
-        global global_same_link_threshold
-
         def get_timeout_reason() -> None | ExceededSameLinkRateLimit | ExceededTotalLinksRateLimit:
 
             # sanitized_urls = []
@@ -108,7 +101,7 @@ class MyBot(discord.Client):
                     url=url
                 )
                 print(f"User '{message.author.id}' Count '{count}' for URL '{url}'")
-                if count > global_same_link_threshold:
+                if count > self.config.threshold_config.global_same_link_threshold:
                     return ExceededSameLinkRateLimit(urls=url)
                 i += 1
             del url, count
@@ -120,7 +113,7 @@ class MyBot(discord.Client):
                 timestamp=message.created_at
             )
             print(f"User '{message.author.id}' Total count '{total_count}'")
-            if total_count > global_total_links_threshold:
+            if total_count > self.config.threshold_config.global_total_links_threshold:
                 return ExceededTotalLinksRateLimit()
 
         moderation_status = ModerationStatus()
@@ -148,10 +141,10 @@ class MyBot(discord.Client):
             try:
                 if type(moderation_status.trigger_reason) is ExceededSameLinkRateLimit:
                     await message.author.timeout(datetime.timedelta(hours=self.config.timeout_hours),
-                                                 reason=f"Triggered rate limit ({global_same_link_threshold} instances) with URL ??")
+                                                 reason=f"Triggered rate limit ({self.config.threshold_config.global_same_link_threshold} instances) with URL ??")
                 else:  # ExceededTotalLinksRateLimit
                     await message.author.timeout(datetime.timedelta(hours=self.config.timeout_hours),
-                                                 reason=f"Triggered rate limit ({global_total_links_threshold} instances) with URL multiple URLs")
+                                                 reason=f"Triggered rate limit ({self.config.threshold_config.global_total_links_threshold} instances) with URL multiple URLs")
                 moderation_status.preemptive_timeout_applied = True
             except discord.errors.Forbidden:
                 await message.channel.send(f"Missing permissions when timing out user {message.author.mention}")
@@ -209,10 +202,9 @@ class MyBot(discord.Client):
     async def messages_cleanup(self):
         async with self.messages_cleanup_lock:
             print("Messages cleanup job start")
-            global global_thresholds_seconds
             job_start_timestamp = datetime.datetime.now(datetime.UTC)
             bottom_threshold = job_start_timestamp - datetime.timedelta(
-                seconds=global_thresholds_seconds + 5)  # Adding an extra margin just in case
+                seconds=self.config.threshold_config.global_thresholds_seconds + 5)  # Adding an extra margin just in case
             for server in self.config.messages_db.servers.values():
                 server: MessagesDBServer
                 for author in server.authors.values():
@@ -230,7 +222,7 @@ class MyBot(discord.Client):
             print("Timeout cleanup job start")
             job_start_timestamp = datetime.datetime.now(datetime.UTC)
             bottom_threshold = job_start_timestamp - datetime.timedelta(
-                seconds=global_thresholds_seconds + 5)  # Adding an extra margin just in case
+                seconds=self.config.threshold_config.global_thresholds_seconds + 5)  # Adding an extra margin just in case
             for server in self.config.messages_db.servers.values():
                 server: MessagesDBServer
                 for author in server.authors.values():
@@ -258,9 +250,7 @@ class MyBot(discord.Client):
                 print(f"Error while attempting to reconnect. \n{e}")
 
 
-global_thresholds_seconds = 5  # Every when to clean up the internal cache/or also named as how wide is the margin.
-global_same_link_threshold = 3  # Total number of hits (per used) allowed. Triggers at 4
-global_total_links_threshold = 10  # Allowing a total of 10 links sent per used within 5 seconds. Triggers at 11
+
 
 if __name__ == '__main__':
     _intents = discord.Intents.default()
