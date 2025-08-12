@@ -2,6 +2,12 @@
 
 Simple discord bot to handle bots/hacked accounts that will spam links in various channels.
 
+Covers the following scenarios **per user**:
+
+- Total links posted within X seconds
+- Total times the same link was posted within X seconds ()
+- Attachments are considered individual links, thus covered in the total links clause
+
 ## ENV
 
 | ENV                         | Default | Description                                                                                                                                                 | Required |
