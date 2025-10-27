@@ -176,4 +176,6 @@ spec:
               value: '2222222 33333 44444'
             - name: DISCORD_SERVER_ID
               value: '111111111'
+            - name: PYTHONUNBUFFERED
+              value: '1'
 ```
