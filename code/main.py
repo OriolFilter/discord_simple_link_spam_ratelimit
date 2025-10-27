@@ -56,7 +56,6 @@ class MyBot(discord.Client):
         self.task_check_health.start()
 
     async def on_message(self, message: discord.Message):
-        print(self.config.server_id)
         if message.guild.id != self.config.server_id:
             print(f"Wrong server {message.author}")
         elif message.author.bot:
@@ -234,7 +233,7 @@ class MyBot(discord.Client):
         print(f"Is connected? {self.is_connected}")
 
         if self.is_connected:
-            with open(file, "w") as f:
+            with open(file, "w+") as f:
                 f.write(("NOK", "OK")[self.is_connected])
         else:
             try:
