@@ -198,7 +198,7 @@ class MyBot(discord.Client):
     @tasks.loop(seconds=5)
     async def messages_cleanup(self):
         async with self.messages_cleanup_lock:
-            print("Messages cleanup job start")
+            print("[START] MESSAGES Cleanup")
             job_start_timestamp = datetime.datetime.now(datetime.UTC)
             bottom_threshold = job_start_timestamp - datetime.timedelta(
                 seconds=self.config.threshold_config.threshold_seconds + 5)  # Adding an extra margin just in case
@@ -210,13 +210,14 @@ class MyBot(discord.Client):
                         message: MessageRecord
                         if message.creation_timestamp < bottom_threshold:
                             print(
-                                f"[CACHE CLEANUP] Deleting message {message.id} from user {message.author_id} (server {message.server_id})")
+                                f"[MESSAGES CLEANUP] Deleting message {message.id} from user {message.author_id} (server {message.server_id})")
                             author.messages.remove(message)
+            print("[ END ] MESSAGES Cleanup")
 
     @tasks.loop(seconds=15)
     async def task_timeout_cleanup(self):
         async with self.lock_timeout_cleanup:
-            print("Timeout cleanup job start")
+            print("[START] TIMEOUT Cleanup")
             job_start_timestamp = datetime.datetime.now(datetime.UTC)
             bottom_threshold = job_start_timestamp - datetime.timedelta(
                 seconds=self.config.threshold_config.threshold_seconds + 5)  # Adding an extra margin just in case
@@ -226,7 +227,7 @@ class MyBot(discord.Client):
                     author: MessagesDBServerAuthor
                     if author.timed_out and author.timed_out_timestamp < bottom_threshold:
                         author.clear_cache_timout()
-
+            print("[ END ] TIMEOUT Cleanup")
     @tasks.loop(seconds=5)
     async def task_check_health(self):
         file = '/tmp/healthy'

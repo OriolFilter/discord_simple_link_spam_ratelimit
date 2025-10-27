@@ -51,14 +51,19 @@ class MessagesDBServerAuthor:
         self.config = config
 
     def add_message(self, message_object: MessageRecord):
+        links = ''
+        for link in message_object.urls:
+            links += f"\n\t- {link}"
+        print(f"Adding entry for user '{message_object.author_id}{links}")
         self.messages.append(message_object)
         # print(f"Total messages from user {message_object.author_id} ({len(self.messages)})")
 
     def count_links_from_author(self, timestamp: datetime.datetime, url: str) -> int:
         count = 0
         for message in self.get_messages_within_threshold(timestamp):
-            if url in message.urls:
-                count += 1
+            for message_url in message.urls:
+                if message_url == url:
+                    count += 1
         return count
 
     def count_total_sent_links_from_author(self, timestamp: datetime.datetime) -> int:
