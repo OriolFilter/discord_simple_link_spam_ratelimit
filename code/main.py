@@ -151,7 +151,7 @@ class MyBot(discord.Client):
 
             # Feedback/Message for the MODERATED USER
             await message.channel.send(content=f"# Preemptive timeout {message.author.mention}\n"
-                                               f"## Timout hours: {self.config.timeout_hours}\n"
+                                               f"## Timeout hours: {self.config.timeout_hours}\n"
                                                f"If you believe this is was a mistake, please contact the "
                                                f"moderators/admins.\n")
 
@@ -226,7 +226,7 @@ class MyBot(discord.Client):
                 for author in server.authors.values():
                     author: MessagesDBServerAuthor
                     if author.timed_out and author.timed_out_timestamp < bottom_threshold:
-                        author.clear_cache_timout()
+                        author.clear_cache_timeout()
             print("[ END ] TIMEOUT Cleanup")
     @tasks.loop(seconds=5)
     async def task_check_health(self):

@@ -94,7 +94,7 @@ class MessagesDBServerAuthor:
         self.timed_out = True
         self.timed_out_timestamp = datetime.datetime.now(datetime.UTC)
 
-    def clear_cache_timout(self):
+    def clear_cache_timeout(self):
         self.timed_out = False
         self.timed_out_timestamp = None
         print(f"Clear cache: User {self.id} no longer in the cached timeout")

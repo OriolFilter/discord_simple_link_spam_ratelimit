@@ -71,7 +71,7 @@ class ModerationEmbedClass(discord.ui.View):
     #     return False
 
     @discord.ui.button(label="Remove timeout", style=discord.ButtonStyle.success)
-    async def remove_timout(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def remove_timeout(self, interaction: discord.Interaction, button: discord.ui.Button):
         button.style = discord.ButtonStyle.green
         if interaction.user.guild_permissions.administrator or (
                 self.is_user_moderator(interaction.user) or
@@ -218,7 +218,7 @@ class ModerationEmbedClass(discord.ui.View):
 
         return embed
         # return (f"# Preemtive timeout {self.moderated_discord_user.mention}\n"
-        #         f"## Timout hours: {self.config.timeout_hours}\n"
+        #         f"## Timeout hours: {self.config.timeout_hours}\n"
         #         f"If you believe this is was a mistake, please contact the moderators/admins.\n")
 
     def get_status_text(self) -> str:
