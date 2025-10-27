@@ -85,7 +85,9 @@ class ModerationEmbedClass(discord.ui.View):
 
                 self.user_that_removed_timeout = interaction.user
                 button.disabled = True
-                await interaction.response.edit_message(view=self, embed=self.get_status_embed(), self=self)
+                await interaction.response.edit_message(view=self, embed=self.get_status_embed())
+                # await interaction.response.edit_message(view=self, embed=self.get_status_embed(), self=self)
+                # I dont remember why I was doing self=self
 
             except discord.errors.Forbidden:
                 await interaction.message.reply(
@@ -111,7 +113,9 @@ class ModerationEmbedClass(discord.ui.View):
 
                 self.user_that_kicked = interaction.user
                 button.disabled = True
-                await interaction.response.edit_message(view=self, embed=self.get_status_embed(), self=self)
+                await interaction.response.edit_message(view=self, embed=self.get_status_embed())
+                # await interaction.response.edit_message(view=self, embed=self.get_status_embed(), self=self)
+                # I dont remember why I was doing self=self
 
             except discord.errors.Forbidden:
                 await interaction.message.reply(
@@ -141,7 +145,9 @@ class ModerationEmbedClass(discord.ui.View):
 
                 self.user_that_banned = interaction.user
                 button.disabled = True
-                await interaction.response.edit_message(view=self, embed=self.get_status_embed(), self=self)
+                await interaction.response.edit_message(view=self, embed=self.get_status_embed())
+                # await interaction.response.edit_message(view=self, embed=self.get_status_embed(), self=self)
+                # I dont remember why I was doing self=self
 
             except discord.errors.Forbidden:
                 await interaction.message.reply(
